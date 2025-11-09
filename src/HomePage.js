@@ -3,13 +3,14 @@ import { Box, Typography, Paper, Button, FormControlLabel, Checkbox, TextField }
 import Calendar from './components/calendar';
 import DatePicker from './components/datePicker';
 import axiosInstance from './api';
-import { useLocation } from 'react-router';
+import { useLocation, useNavigate } from 'react-router';
+import { Navigate } from 'react-router';
 
 export default function HomePage() {
   const location = useLocation();
   const params = new URLSearchParams(location.search);
   const user_id = params.get('user_id');
-
+  const navigate = useNavigate()
 
   const [workouts, setWorkouts] = useState([]);
   const [selectedExercises, setSelectedExercises] = useState({}); // checkboxes
@@ -56,6 +57,8 @@ export default function HomePage() {
       user_id: user_id,
       workout_id: workouts[0].workout_id,
       notes: generateNotes()
+    }).then(() => {
+      navigate(`/log-workout?user_id=${user_id}`)
     })
   };
 
