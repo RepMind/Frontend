@@ -32,9 +32,6 @@ export default function HomePage() {
 
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
           <Box>
-            <Typography variant="subtitle1" mb={1}>
-              Welcome! Here’s your calendar:
-            </Typography>
             <Calendar />
           </Box>
 
