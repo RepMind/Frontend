@@ -47,7 +47,7 @@ export default function HomePage() {
 
           <Box>
             <Typography variant="subtitle1" mb={1}>
-              What equipment did you use today?
+              What workout did you do today?
             </Typography>
             <Machinebox />
           </Box>
