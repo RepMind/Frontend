@@ -1,11 +1,80 @@
-import React from 'react';
-import { Box, Typography, Paper, Button } from '@mui/material';
+import React, { useEffect, useState } from 'react';
+import { Box, Typography, Paper, Button, FormControlLabel, Checkbox, TextField } from '@mui/material';
 import Calendar from './components/calendar';
 import DatePicker from './components/datePicker';
-import Machinebox from './components/machinebox';
-import TextField from './components/textfield';
+import axiosInstance from './api';
+import { useLocation } from 'react-router';
 
 export default function HomePage() {
+  const location = useLocation();
+  const params = new URLSearchParams(location.search);
+  const user_id = params.get('user_id');
+
+
+  const [workouts, setWorkouts] = useState([]);
+  const [selectedExercises, setSelectedExercises] = useState({}); // checkboxes
+  const [exerciseWeights, setExerciseWeights] = useState({}); // store weight input for each exercise
+
+  useEffect(() => {
+    if (!user_id) return;
+
+    axiosInstance.get(`/user/${user_id}/workouts`)
+      .then(res => {
+        if (res.data.workouts) {
+          setWorkouts(res.data.workouts);
+        }
+      })
+      .catch(err => console.error('Error fetching workouts:', err));
+  }, [user_id]);
+
+  const handleExerciseToggle = (workoutIdx, exerciseIdx) => {
+    const key = `${workoutIdx}-${exerciseIdx}`;
+    setSelectedExercises(prev => ({
+      ...prev,
+      [key]: !prev[key]
+    }));
+    // clear weight if unchecked
+    if (selectedExercises[key]) {
+      setExerciseWeights(prev => {
+        const copy = { ...prev };
+        delete copy[key];
+        return copy;
+      });
+    }
+  };
+
+  const handleWeightChange = (workoutIdx, exerciseIdx, value) => {
+    const key = `${workoutIdx}-${exerciseIdx}`;
+    setExerciseWeights(prev => ({
+      ...prev,
+      [key]: value
+    }));
+  };
+
+  const handleLogWorkout = () => {
+    axiosInstance.post("/log", {
+      user_id: user_id,
+      workout_id: workouts[0].workout_id,
+      notes: generateNotes()
+    })
+  };
+
+  const generateNotes = () => {
+    const notes = [];
+  
+    workouts.forEach((workout, wIdx) => {
+      workout.exercise.forEach((ex, eIdx ) => {
+        const key = `${wIdx}-${eIdx}`;
+        if (selectedExercises[key] && exerciseWeights[key]) {
+          notes.push(`${ex.exercise_name}: ${exerciseWeights[key]}`);
+        }
+      });
+    });
+  
+    return notes.length > 0 ? notes.join(', ') + '.' : '';
+  };
+  
+
   return (
     <Box
       sx={{
@@ -44,27 +113,50 @@ export default function HomePage() {
 
           <Box>
             <Typography variant="subtitle1" mb={1}>
-              What workout did you do today?
+              Your Workouts:
             </Typography>
-            <Machinebox />
+            {workouts.length === 0 && (
+              <Typography>No workouts found for this user.</Typography>
+            )}
+            {workouts.map((workout, wIdx) => (
+              <Box key={wIdx} sx={{ mb: 2, p: 2, border: '1px solid #ccc', borderRadius: 2 }}>
+                <Typography variant="subtitle2" fontWeight="bold" mb={1}>
+                  {workout.workout_name || `Workout ${wIdx + 1}`}
+                </Typography>
+                {workout.exercise.map((ex, eIdx) => {
+                  const key = `${wIdx}-${eIdx}`;
+                  return (
+                    <Box key={eIdx} sx={{ mb: 1 }}>
+                      <FormControlLabel
+                        control={
+                          <Checkbox
+                            checked={!!selectedExercises[key]}
+                            onChange={() => handleExerciseToggle(wIdx, eIdx)}
+                          />
+                        }
+                        label={`${ex.exercise_name} — ${ex.sets} sets × ${ex.reps}`}
+                      />
+                      {selectedExercises[key] && (
+                        <TextField
+                          label="Weight used"
+                          variant="outlined"
+                          fullWidth
+                          size="small"
+                          value={exerciseWeights[key] || ''}
+                          onChange={(e) => handleWeightChange(wIdx, eIdx, e.target.value)}
+                          sx={{ mt: 1 }}
+                        />
+                      )}
+                    </Box>
+                  );
+                })}
+              </Box>
+            ))}
           </Box>
 
-          <Box>
-            <Typography variant="subtitle1" mb={1}>
-              How long did you work out today?
-            </Typography>
-            <TextField label="Minutes" variant="outlined" fullWidth />
-          </Box>
-
-          <Box>
-            <Typography variant="subtitle1" mb={1}>
-              Extra Info (sets, reps, etc)
-            </Typography>
-            <TextField label="Extra Info" variant="outlined" fullWidth />
-          </Box>
-
-          <Button   
+          <Button
             variant="contained"
+            onClick={handleLogWorkout}
             sx={{
               mt: 2,
               backgroundColor: '#1976d2',
@@ -77,7 +169,7 @@ export default function HomePage() {
           >
             Log Workout
           </Button>
-          <Button>Regenerate Plan</Button>
+          <Button variant="outlined">Regenerate Plan</Button>
         </Box>
       </Paper>
     </Box>
